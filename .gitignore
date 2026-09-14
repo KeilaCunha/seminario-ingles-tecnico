@@ -1,0 +1,12 @@
+# Material da professora - não deve ser publicado
+*.pdf
+
+# Arquivos temporários do sistema
+*.tmp
+screenshot_teste.png
+Thumbs.db
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
