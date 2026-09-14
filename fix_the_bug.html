@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Fix the Bug — English Tenses Debugger</title>
+<title>Fix the Bug -- English Tenses Debugger</title>
 <style>
   :root{
     --bg:#1e1e1e; --sidebar:#252526; --tabsbar:#2d2d2d; --activeTab:#1e1e1e;
     --border:#3c3c3c; --text:#d4d4d4; --muted:#8a8a8a;
-    --accent:#0e639c; --accent2:#1177bb; --green:#4ec9a0; --red:#f14c4c;
+    --accent:#0e639c; --accent2:#1177bb; --green:#4ec9a0; --red:#f14c4c; --orange:#e8ab53;
     --kw:#569cd6; --str:#ce9178; --com:#6a9955; --fn:#dcdcaa; --num:#b5cea8;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -23,10 +23,12 @@
   .dot{width:12px;height:12px;border-radius:50%;}
   .dot.red{background:#ff5f56;} .dot.yellow{background:#ffbd2e;} .dot.green{background:#27c93f;}
   .titlebar-text{font-size:12px;color:var(--muted);flex:1;text-align:center;margin-right:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
   .hamburger-btn{
-    display:none;background:none;border:none;color:#fff;font-size:18px;
-    margin-right:10px;cursor:pointer;padding:2px 8px;flex-shrink:0;
+    display:none;flex-direction:column;justify-content:center;gap:3px;
+    background:none;border:none;cursor:pointer;padding:6px 8px;margin-right:8px;flex-shrink:0;
   }
+  .hamburger-btn .bar{width:16px;height:2px;background:#fff;border-radius:1px;}
 
   .main-layout{flex:1;display:flex;min-height:0;position:relative;}
 
@@ -39,6 +41,7 @@
   }
   .sidebar-title{font-size:11px;color:var(--muted);padding:14px 16px 8px;letter-spacing:1px;text-transform:uppercase;}
   .sidebar-project{font-size:12px;color:#cccccc;padding:2px 12px 10px;font-weight:bold;display:flex;align-items:center;gap:6px;}
+  .folder-icon{width:12px;height:10px;background:#dcb67a;border-radius:0 2px 2px 2px;flex-shrink:0;position:relative;}
   .file-item{
     display:flex;align-items:center;gap:8px;padding:8px 12px 8px 24px;cursor:pointer;
     font-size:13px;color:#cccccc;border-left:2px solid transparent;
@@ -68,7 +71,7 @@
   }
   .tab.active{background:var(--activeTab);color:#fff;border-top:2px solid var(--accent2);}
   .tab .ext-badge{width:16px;height:16px;font-size:8px;}
-  .tab-close{opacity:.6;padding:0 2px;border-radius:3px;}
+  .tab-close{opacity:.6;padding:0 4px;border-radius:3px;font-weight:bold;}
   .tab-close:hover{background:#5a5a5a;opacity:1;}
 
   .editor{flex:1;overflow-y:auto;background:var(--bg);padding:14px 0;-webkit-overflow-scrolling:touch;}
@@ -93,14 +96,14 @@
     75%{transform:translateX(4px);}
   }
   .fixed-word{color:var(--green);background:rgba(78,201,160,.12);border-radius:3px;padding:0 2px;}
-  .fixed-check{color:var(--green);margin-left:6px;font-size:12px;}
+  .fixed-check{color:var(--green);margin-left:6px;font-size:11px;font-weight:bold;border:1px solid var(--green);border-radius:3px;padding:0 4px;}
 
   .bottom-panel{height:150px;border-top:1px solid var(--border);background:#181818;flex-shrink:0;display:flex;flex-direction:column;}
   .panel-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
   .panel-tab{padding:6px 14px;font-size:11px;letter-spacing:.5px;color:var(--muted);cursor:pointer;text-transform:uppercase;}
   .panel-tab.active{color:#fff;border-bottom:2px solid var(--accent2);}
   .panel-content{flex:1;overflow-y:auto;padding:8px 14px;font-size:12.5px;-webkit-overflow-scrolling:touch;}
-  #problemsPanel .prob-line{color:#e8ab53;margin:3px 0;}
+  #problemsPanel .prob-line{color:var(--orange);margin:3px 0;}
   #problemsPanel .ok-line{color:var(--green);margin:3px 0;}
   #terminalPanel{color:#c8c8c8;}
   #terminalPanel .log-ok{color:var(--green);}
@@ -114,6 +117,20 @@
   }
   .statusbar .sb-left, .statusbar .sb-right{display:flex;min-width:0;}
   .statusbar span{margin-right:16px;display:flex;align-items:center;gap:5px;white-space:nowrap;}
+
+  /* Sprint timer floating badge */
+  .sprint-timer{
+    position:fixed;top:44px;right:16px;background:#252526;border:2px solid var(--accent2);
+    border-radius:6px;padding:6px 14px;font-size:20px;font-weight:bold;color:#fff;
+    z-index:45;box-shadow:0 2px 10px rgba(0,0,0,.5);letter-spacing:1px;
+  }
+  .sprint-timer.hidden{display:none;}
+  .sprint-timer.low{border-color:var(--red);color:var(--red);animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{transform:scale(1);} 50%{transform:scale(1.08);}}
+
+  .tok-fn{color:var(--fn);}
+
+  .bug-word{ }
 
   /* Quick fix popup */
   #quickfix-popup{
@@ -136,32 +153,62 @@
   }
   .toast.show{opacity:1;transform:translateY(0);}
 
-  /* Overlay success */
-  #overlay{
+  /* Full screen overlays (start / end) */
+  .full-overlay{
     position:fixed;inset:0;background:rgba(0,0,0,.92);display:flex;align-items:center;
-    justify-content:center;z-index:100;flex-direction:column;padding:16px;
+    justify-content:center;z-index:100;flex-direction:column;padding:16px;overflow-y:auto;
   }
-  #overlay.hidden{display:none;}
+  .full-overlay.hidden{display:none;}
   #confetti-canvas{position:absolute;inset:0;pointer-events:none;}
-  .success-box{
+
+  .card-box{
     position:relative;background:#181818;border:1px solid #333;border-radius:8px;
-    padding:36px 48px;text-align:center;max-width:600px;width:100%;z-index:2;
+    padding:32px 40px;text-align:center;max-width:480px;width:100%;z-index:2;
   }
-  .success-box .prompt{color:var(--green);font-size:13px;text-align:left;margin-bottom:18px;min-height:110px;}
-  .success-box h1{color:#fff;font-size:26px;margin:10px 0;}
-  .success-box .grade{font-size:48px;font-weight:bold;color:var(--green);margin:10px 0;}
-  .success-box p{color:var(--muted);font-size:14px;}
-  .restart-btn{
-    margin-top:18px;background:var(--accent2);color:#fff;border:none;padding:10px 24px;
-    border-radius:4px;cursor:pointer;font-size:14px;font-family:inherit;
+  .card-box h1{color:#fff;font-size:22px;margin:6px 0 4px;letter-spacing:.5px;}
+  .card-box h2{color:var(--muted);font-size:13px;margin:0 0 20px;font-weight:normal;}
+  .card-box label{display:block;text-align:left;font-size:12px;color:var(--muted);margin:14px 0 6px;}
+  .card-box input[type=text], .card-box input[type=number]{
+    width:100%;background:#111;border:1px solid #3c3c3c;color:#fff;padding:10px 12px;
+    border-radius:4px;font-family:inherit;font-size:14px;
   }
-  .restart-btn:hover{background:#1a8cd8;}
+  .timer-row{display:flex;align-items:center;gap:10px;margin-top:14px;}
+  .timer-row input[type=checkbox]{width:18px;height:18px;flex-shrink:0;}
+  .timer-row input[type=number]{width:70px;flex-shrink:0;}
+  .timer-row label{margin:0;flex:1;min-width:0;text-align:left;word-break:break-word;}
+  .primary-btn{
+    margin-top:22px;background:var(--accent2);color:#fff;border:none;padding:12px 28px;
+    border-radius:4px;cursor:pointer;font-size:14px;font-family:inherit;width:100%;font-weight:bold;
+  }
+  .primary-btn:hover{background:#1a8cd8;}
+  .secondary-btn{
+    margin-top:10px;background:transparent;color:var(--muted);border:1px solid #3c3c3c;padding:10px 20px;
+    border-radius:4px;cursor:pointer;font-size:13px;font-family:inherit;width:100%;
+  }
+  .secondary-btn:hover{color:#fff;border-color:#5a5a5a;}
+
+  .check-badge{
+    width:56px;height:56px;border-radius:50%;background:var(--green);margin:0 auto 10px;position:relative;
+  }
+  .check-badge::after{
+    content:'';position:absolute;left:18px;top:28px;width:22px;height:11px;
+    border-left:4px solid #0a0a0a;border-bottom:4px solid #0a0a0a;transform:rotate(-45deg);
+  }
+  .timeout-badge{
+    width:56px;height:56px;border-radius:50%;background:var(--orange);margin:0 auto 10px;
+    display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold;color:#1e1e1e;
+  }
+  .card-box .prompt{color:var(--green);font-size:12px;text-align:left;margin-bottom:14px;min-height:96px;}
+  .card-box .grade{font-size:42px;font-weight:bold;color:var(--green);margin:6px 0;}
+  .card-box .grade.orange{color:var(--orange);}
+  .card-box p.details{color:var(--muted);font-size:13px;margin:4px 0 6px;}
+
   .cursor-blink{display:inline-block;width:7px;height:14px;background:var(--green);animation:blink 1s step-end infinite;vertical-align:middle;}
   @keyframes blink{50%{opacity:0;}}
 
   /* ---------- Responsive: tablet / mobile ---------- */
   @media (max-width: 860px){
-    .hamburger-btn{display:inline-block;}
+    .hamburger-btn{display:flex;}
     .titlebar-text{margin-right:8px;}
 
     .sidebar{
@@ -182,10 +229,12 @@
 
     .toast{left:12px;right:12px;bottom:132px;max-width:none;}
 
-    .success-box{padding:26px 20px;}
-    .success-box .prompt{font-size:11.5px;min-height:90px;}
-    .success-box h1{font-size:20px;}
-    .success-box .grade{font-size:38px;}
+    .card-box{padding:22px 18px;}
+    .card-box .prompt{font-size:11px;min-height:80px;}
+    .card-box h1{font-size:19px;}
+    .card-box .grade{font-size:34px;}
+
+    .sprint-timer{top:auto;bottom:130px;right:10px;font-size:16px;padding:5px 10px;}
   }
 
   @media (max-width: 420px){
@@ -200,19 +249,21 @@
 
 <div id="app">
   <div class="titlebar">
-    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Abrir menu">?</button>
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Abrir menu">
+      <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+    </button>
     <div class="dots"><div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div></div>
-    <div class="titlebar-text">fix-the-bug — english-tenses-debugger</div>
+    <div class="titlebar-text">fix-the-bug -- english-tenses-debugger</div>
   </div>
 
   <div class="main-layout">
     <div class="sidebar-backdrop hidden" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
     <div class="sidebar" id="sidebar">
       <div class="sidebar-title">Explorer</div>
-      <div class="sidebar-project">?? seminario-ingles-tecnico</div>
+      <div class="sidebar-project"><span class="folder-icon"></span> seminario-ingles-tecnico</div>
       <div id="fileList"></div>
       <div class="sidebar-footer">
-        <div class="progress-label" id="progressLabel">Bugs corrigidos: 0 / 10</div>
+        <div class="progress-label" id="progressLabel">Bugs corrigidos: 0 / 5</div>
         <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
       </div>
     </div>
@@ -233,43 +284,65 @@
 
   <div class="statusbar">
     <div class="sb-left">
-      <span>?? main</span>
+      <span>branch: main</span>
       <span id="statusLang">Plain Text</span>
     </div>
     <div class="sb-right">
-      <span id="statusScore">?? 0 / 10</span>
+      <span id="statusScore">Bugs: 0 / 5</span>
       <span class="hide-mobile">UTF-8</span>
     </div>
   </div>
 </div>
 
+<div id="sprintTimer" class="sprint-timer hidden">05:00</div>
+
 <div id="quickfix-popup" class="hidden">
-  <div class="qf-header">?? Quick Fix... corrija o tempo verbal</div>
+  <div class="qf-header">Quick Fix -- corrija o tempo verbal</div>
   <div id="qfOptions"></div>
 </div>
 
-<div id="overlay" class="hidden">
+<!-- Start screen -->
+<div id="startScreen" class="full-overlay">
+  <div class="card-box">
+    <h1>Fix the Bug</h1>
+    <h2>English Tenses Debugger -- baseado no conteudo de Ingles Tecnico</h2>
+
+    <div class="timer-row">
+      <input type="checkbox" id="timerEnableCheckbox" onchange="onTimerToggle()">
+      <label for="timerEnableCheckbox">Ativar cronometro de sprint (opcional)</label>
+      <input type="number" id="timerMinutesInput" value="5" min="1" max="30" disabled>
+    </div>
+
+    <button class="primary-btn" onclick="startSession()">Iniciar sessao</button>
+  </div>
+</div>
+
+<!-- End screen (success or timeout) -->
+<div id="overlay" class="full-overlay hidden">
   <canvas id="confetti-canvas"></canvas>
-  <div class="success-box">
+  <div class="card-box">
     <div class="prompt" id="terminalTyping"></div>
-    <h1>? BUILD SUCCEEDED</h1>
-    <div class="grade" id="finalGrade">—</div>
-    <p id="finalDetails"></p>
-    <button class="restart-btn" onclick="location.reload()">? Rodar novamente</button>
+    <div id="badgeArea"></div>
+    <h1 id="overlayTitle">BUILD SUCCESSFUL</h1>
+    <div class="grade" id="finalGrade">--</div>
+    <p class="details" id="finalDetails"></p>
+
+    <button class="secondary-btn" onclick="location.reload()">Reiniciar (novas perguntas)</button>
   </div>
 </div>
 
 <script>
 const EXT_COLORS = { js:'#f1e05a', py:'#3572A5', c:'#5c6bc0', yml:'#cb171e' };
 const MOBILE_BREAKPOINT = 860;
+const QUESTIONS_PER_SESSION = 5;
 
 function seg(t,c){ return {t,c}; }
 function bug(t,options,correct,explain){ return {t,c:'bug',options,correct,explain}; }
 
-const FILES = [
+const ALL_FILES = [
   { name:'server.js', ext:'js', lang:'JavaScript', lines:[
     [seg('// This function ','com'), bug('is process',['is process','processes','process','are processing'],1,
-      'Comportamento padrão da função, não uma ação pontual ? Simple Present. Sujeito é "this function" (it) ? acrescenta -s: processes.'), seg(' incoming requests and returns a response.','com')],
+      'Comportamento padrao da funcao, nao uma acao pontual -> Simple Present. Sujeito e "this function" (it) -> acrescenta -s: processes.'), seg(' incoming requests and returns a response.','com')],
     [seg('function ','kw'), seg('handleRequest','tok-fn'), seg('(req, res) {','pl')],
     [seg('  const data = ','pl'), seg('processData','tok-fn'), seg('(req.body);','pl')],
     [seg('  res.send(data);','pl')],
@@ -278,7 +351,7 @@ const FILES = [
   { name:'algorithm.py', ext:'py', lang:'Python', lines:[
     [seg('# The quicksort algorithm sorts the array by choosing a pivot element.','com')],
     [seg('# Right now, ','com'), bug('it divide',['it divide','it divides','it is dividing','it was dividing'],2,
-      '"Right now" indica uma ação em andamento no momento da fala ? Present Continuous: it is dividing.'), seg(' the list into two sublists.','com')],
+      '"Right now" indica uma acao em andamento no momento da fala -> Present Continuous: it is dividing.'), seg(' the list into two sublists.','com')],
     [seg('def ','kw'), seg('quicksort','tok-fn'), seg('(arr):','pl')],
     [seg('    if len(arr) <= 1:','pl')],
     [seg('        return arr','kw')]
@@ -286,14 +359,14 @@ const FILES = [
   { name:'backup.py', ext:'py', lang:'Python', lines:[
     [seg('# The database backup runs every night at midnight.','com')],
     [seg('# Currently, ','com'), bug('the system upload',['the system upload','the system uploads','the system is uploading','the system was uploading'],2,
-      '"Currently" indica uma ação em progresso agora ? Present Continuous: the system is uploading.'), seg(' the backup file to the cloud.','com')],
+      '"Currently" indica uma acao em progresso agora -> Present Continuous: the system is uploading.'), seg(' the backup file to the cloud.','com')],
     [seg('def ','kw'), seg('run_backup','tok-fn'), seg('():','pl')],
     [seg('    connection = ','pl'), seg('connect_to_db','tok-fn'), seg('()','pl')]
   ]},
   { name:'network.c', ext:'c', lang:'C', lines:[
     [seg('// The socket listens for incoming connections on port 8080.','com')],
     [seg('// At this moment, the client ','com'), bug('is send',['is send','is sending','send','sends'],1,
-      '"At this moment" ? ação em andamento agora ? Present Continuous: is sending.'), seg(' a large file to the server.','com')],
+      '"At this moment" -> acao em andamento agora -> Present Continuous: is sending.'), seg(' a large file to the server.','com')],
     [seg('int ','kw'), seg('main','tok-fn'), seg('() {','pl')],
     [seg('    int socket_fd = socket(AF_INET, SOCK_STREAM, 0);','pl')],
     [seg('    return 0;','kw')],
@@ -302,7 +375,7 @@ const FILES = [
   { name:'api.js', ext:'js', lang:'JavaScript', lines:[
     [seg('// This endpoint usually returns a JSON object with user data.','com')],
     [seg('// TODO: ','com'), bug('the team fix',['the team fix','the team fixes','the team are fixing','the team fixing'],1,
-      '"Every sprint" indica rotina/hábito ? Simple Present. "Team" é tratado como singular (it) ? acrescenta -s: fixes.'), seg(' this bug every sprint.','com')],
+      '"Every sprint" indica rotina/habito -> Simple Present. "Team" e tratado como singular (it) -> acrescenta -s: fixes.'), seg(' this bug every sprint.','com')],
     [seg('app.get','tok-fn'), seg("('/users', (req, res) => {",'pl')],
     [seg('  res.json(users);','pl')],
     [seg('});','pl')]
@@ -310,14 +383,14 @@ const FILES = [
   { name:'cache.py', ext:'py', lang:'Python', lines:[
     [seg('# The cache stores frequently accessed data to improve performance.','com')],
     [seg('# It usually ','com'), bug('take',['take','takes','is taking','taking'],1,
-      '"Usually" é advérbio de frequência típico do Simple Present. Sujeito "it" (3ª pessoa singular) ? acrescenta -s: takes.'), seg(' less than 10 milliseconds to respond.','com')],
+      '"Usually" e adverbio de frequencia tipico do Simple Present. Sujeito "it" (3a pessoa singular) -> acrescenta -s: takes.'), seg(' less than 10 milliseconds to respond.','com')],
     [seg('def ','kw'), seg('get_from_cache','tok-fn'), seg('(key):','pl')],
     [seg('    return cache.get(key)','kw')]
   ]},
   { name:'auth.js', ext:'js', lang:'JavaScript', lines:[
     [seg('// The authentication service verifies tokens on every request.','com')],
     [seg('// Security logs ','com'), bug('shows',['shows','show','is showing','are showed'],1,
-      '"Logs" é plural (they) ? sem -s no Simple Present: show, e não shows.'), seg(' every failed login attempt.','com')],
+      '"Logs" e plural (they) -> sem -s no Simple Present: show, e nao shows.'), seg(' every failed login attempt.','com')],
     [seg('function ','kw'), seg('verifyToken','tok-fn'), seg('(token) {','pl')],
     [seg('  return jwt.verify(token, SECRET);','pl')],
     [seg('}','pl')]
@@ -325,13 +398,13 @@ const FILES = [
   { name:'loop.py', ext:'py', lang:'Python', lines:[
     [seg('# This loop iterates over each element in the list.','com')],
     [seg('# Wait, the counter ','com'), bug("doesn't increasing",["doesn't increasing","isn't increasing","don't increase","not increase"],1,
-      'Estamos observando o comportamento agora ("Wait...") ? Present Continuous negativo: isn\'t increasing (to be + not + verbo-ing).'), seg(' correctly.','com')],
+      'Estamos observando o comportamento agora ("Wait...") -> Present Continuous negativo: isn\'t increasing (to be + not + verbo-ing).'), seg(' correctly.','com')],
     [seg('for ','kw'), seg('i ','pl'), seg('in ','kw'), seg('range(len(items)):','pl')],
     [seg('    counter += 1','pl')]
   ]},
   { name:'deploy.yml', ext:'yml', lang:'YAML', lines:[
     [seg('# This pipeline usually ','com'), bug('deploy',['deploy','deploys','is deploying','deploying'],1,
-      '"Usually" ? rotina/hábito ? Simple Present. Sujeito "pipeline" (it) ? acrescenta -s: deploys.'), seg(' the app to production after tests pass.','com')],
+      '"Usually" -> rotina/habito -> Simple Present. Sujeito "pipeline" (it) -> acrescenta -s: deploys.'), seg(' the app to production after tests pass.','com')],
     [seg('# Right now, the pipeline is failing because of a missing dependency.','com')],
     [seg('name: ','kw'), seg('Deploy Pipeline','str')],
     [seg('on: ','kw'), seg('[push]','pl')]
@@ -340,17 +413,106 @@ const FILES = [
     [seg('# The monitoring dashboard displays real-time metrics.','com')],
     [seg('# Currently, three servers are running at high CPU usage.','com')],
     [seg('# ','com'), bug('Everything are working',['Everything are working','Everything is working','Everything work','Everything working'],1,
-      '"Everything" é sempre tratado como singular ? usa "is", nunca "are": Everything is working.'), seg(' as expected.','com')],
+      '"Everything" e sempre tratado como singular -> usa "is", nunca "are": Everything is working.'), seg(' as expected.','com')],
     [seg('def ','kw'), seg('check_status','tok-fn'), seg('():','pl')],
     [seg('    return "OK"','str')]
+  ]},
+  { name:'release_notes.py', ext:'py', lang:'Python', lines:[
+    [seg('# Release notes - baseado na atividade da Aula 03 (Simple Past, verb to be)','com')],
+    [seg('# The new deployment pipeline ','com'), bug('were',['were','was','is','are'],1,
+      'Sujeito singular "pipeline" (it) no passado do verbo to be -> was, e nao were.'), seg(' very stable last week.','com')],
+    [seg('def ','kw'), seg('get_release_notes','tok-fn'), seg('():','pl')],
+    [seg('    return "v2.3.0"','str')]
+  ]},
+  { name:'bugfix_log.js', ext:'js', lang:'JavaScript', lines:[
+    [seg('// Bugfix log - baseado na atividade da Aula 03 (Simple Past, verbos irregulares)','com')],
+    [seg('// Yesterday, the team ','com'), bug('sended',['sended','sent','sends','was sent'],1,
+      '"Send" e um verbo irregular: o passado e sent, e nao sended.'), seg(' a hotfix to production.','com')],
+    [seg('function ','kw'), seg('deployHotfix','tok-fn'), seg('() {','pl')],
+    [seg('  console.log("Hotfix deployed");','pl')],
+    [seg('}','pl')]
+  ]},
+  { name:'sprint_summary.py', ext:'py', lang:'Python', lines:[
+    [seg('# Sprint summary - baseado na atividade da Aula 03 (Simple Past)','com')],
+    [seg('# The developer ','com'), bug('writed',['writed','wrote','writted','writen'],1,
+      '"Write" e um verbo irregular: o passado e wrote, e nao writed.'), seg(' the tests and fixed three bugs.','com')],
+    [seg('def ','kw'), seg('close_sprint','tok-fn'), seg('():','pl')],
+    [seg('    return "done"','str')]
+  ]},
+  { name:'incident_report.js', ext:'js', lang:'JavaScript', lines:[
+    [seg('// Incident report - baseado na atividade da Aula 04 (Past Continuous)','com')],
+    [seg('// The server crashed while the team ','com'), bug('deploy',['deploy','deploys','was deploying','were deploying'],2,
+      'Acao em andamento no passado, interrompida por outro evento -> Past Continuous. "Team" e tratado como singular (it) -> was deploying.'), seg(' the new version.','com')],
+    [seg('function ','kw'), seg('logIncident','tok-fn'), seg('(msg) {','pl')],
+    [seg('  console.error(msg);','pl')],
+    [seg('}','pl')]
+  ]},
+  { name:'standup_question.py', ext:'py', lang:'Python', lines:[
+    [seg('# Daily standup - baseado na atividade da Aula 04 (Past Continuous, forma interrogativa)','com')],
+    [seg('# ','com'), bug('Did the QA team working',['Did the QA team working','Was the QA team working','Is the QA team working','Does the QA team work'],1,
+      'Pergunta no Past Continuous: Was/Were + sujeito + verbo-ing -> Was the QA team working.'), seg(' on the release yesterday?','com')],
+    [seg('def ','kw'), seg('ask_status','tok-fn'), seg('():','pl')],
+    [seg('    pass','kw')]
+  ]},
+  { name:'roadmap.py', ext:'py', lang:'Python', lines:[
+    [seg('# Product roadmap - baseado na atividade da Aula 04 (Simple Future, will)','com')],
+    [seg('# I promise the new feature ','com'), bug('will be release',['will be release','will be released','will released','is released'],1,
+      'Depois de "will be", usa-se o participio do verbo -> will be released.'), seg(' by Friday.','com')],
+    [seg('def ','kw'), seg('plan_release','tok-fn'), seg('():','pl')],
+    [seg('    return "Friday"','str')]
+  ]},
+  { name:'migration_plan.js', ext:'js', lang:'JavaScript', lines:[
+    [seg('// Migration plan - baseado na atividade da Aula 04 (Simple Future, forma negativa)','com')],
+    [seg('// The old server ','com'), bug("won't supported",["won't supported","won't support","not support","doesn't supports"],1,
+      'Futuro negativo: will + not + verbo no infinitivo (sem "to") -> won\'t support.'), seg(' the new API after the migration.','com')],
+    [seg('function ','kw'), seg('checkCompatibility','tok-fn'), seg('() {','pl')],
+    [seg('  return false;','kw')],
+    [seg('}','pl')]
+  ]},
+  { name:'changelog.py', ext:'py', lang:'Python', lines:[
+    [seg('# Changelog - baseado na atividade da Aula 04 (Present Perfect, yet/already)','com')],
+    [seg('# ','com'), bug('Has the team already fix',['Has the team already fix','Has the team already fixed','Did the team already fixed','Have the team already fix'],1,
+      'Present Perfect: Has/Have + sujeito + already + participio -> Has the team already fixed...'), seg(' the login bug yet?','com')],
+    [seg('def ','kw'), seg('check_bug_status','tok-fn'), seg('():','pl')],
+    [seg('    return True','kw')]
+  ]},
+  { name:'project_history.js', ext:'js', lang:'JavaScript', lines:[
+    [seg('// Project history - baseado na atividade da Aula 04 (Present Perfect, since/for)','com')],
+    [seg('// This repository ','com'), bug('has existed since two years',['has existed since two years','has existed for two years','existed since two years','exists for two years'],1,
+      '"For" indica duracao de tempo -> for two years. "Since" indica um ponto especifico no tempo (ex: since 2022).'), seg('.','com')],
+    [seg('const ','kw'), seg('repo = { name: "seminario-ingles-tecnico" };','pl')]
+  ]},
+  { name:'onboarding.py', ext:'py', lang:'Python', lines:[
+    [seg('# Onboarding notes - baseado na atividade da Aula 04 (Present Perfect, ever/never)','com')],
+    [seg('# ','com'), bug('The new intern never worked',['The new intern never worked','The new intern has never worked','The new intern never has worked',"The new intern don't worked"],1,
+      'Present Perfect com "never": sujeito + has/have + never + participio -> has never worked.'), seg(' with this framework before.','com')],
+    [seg('def ','kw'), seg('onboard_intern','tok-fn'), seg('(name):','pl')],
+    [seg('    print(f"Welcome, {name}!")','str')]
   ]}
 ];
 
+let FILES = [];
 let openTabs = [];
 let activeTab = -1;
 let fixedCount = 0;
 let currentContext = null;
 let activePanel = 'problems';
+
+let timerEnabled = false;
+let timerTotalSeconds = 0;
+let timerRemaining = 0;
+let timerInterval = null;
+let sessionStartTime = 0;
+let sessionOver = false;
+
+function shuffleArray(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
 
 function tokClass(c){
   if(c==='tok-fn') return 'tok-fn';
@@ -371,6 +533,58 @@ function closeSidebarOnMobile(){
   }
 }
 
+/* ---------------- Start screen / session setup ---------------- */
+function onTimerToggle(){
+  document.getElementById('timerMinutesInput').disabled = !document.getElementById('timerEnableCheckbox').checked;
+}
+
+function startSession(){
+  timerEnabled = document.getElementById('timerEnableCheckbox').checked;
+  const minutes = Math.max(1, Math.min(30, parseInt(document.getElementById('timerMinutesInput').value) || 5));
+  timerTotalSeconds = minutes*60;
+  timerRemaining = timerTotalSeconds;
+
+  FILES = shuffleArray(ALL_FILES).slice(0, QUESTIONS_PER_SESSION);
+  openTabs = [];
+  activeTab = -1;
+  fixedCount = 0;
+  sessionOver = false;
+  sessionStartTime = Date.now();
+
+  document.getElementById('startScreen').classList.add('hidden');
+  renderAll();
+  openFile(0);
+
+  if(timerEnabled){
+    const badge = document.getElementById('sprintTimer');
+    badge.classList.remove('hidden');
+    updateTimerDisplay();
+    timerInterval = setInterval(()=>{
+      timerRemaining--;
+      updateTimerDisplay();
+      if(timerRemaining<=0){
+        clearInterval(timerInterval);
+        onTimeUp();
+      }
+    }, 1000);
+  }
+}
+
+function updateTimerDisplay(){
+  const badge = document.getElementById('sprintTimer');
+  const m = Math.floor(timerRemaining/60);
+  const s = timerRemaining%60;
+  badge.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  badge.classList.toggle('low', timerRemaining<=60);
+}
+
+function onTimeUp(){
+  if(sessionOver) return;
+  sessionOver = true;
+  showEndScreen(false);
+}
+
+/* ---------------- Rendering ---------------- */
 function renderSidebar(){
   const list = document.getElementById('fileList');
   list.innerHTML = '';
@@ -385,8 +599,8 @@ function renderSidebar(){
     list.appendChild(div);
   });
   document.getElementById('progressLabel').textContent = `Bugs corrigidos: ${fixedCount} / ${FILES.length}`;
-  document.getElementById('progressFill').style.width = (fixedCount/FILES.length*100)+'%';
-  document.getElementById('statusScore').textContent = `?? ${fixedCount} / ${FILES.length}`;
+  document.getElementById('progressFill').style.width = (FILES.length? fixedCount/FILES.length*100 : 0)+'%';
+  document.getElementById('statusScore').textContent = `Bugs: ${fixedCount} / ${FILES.length}`;
 }
 
 function renderTabs(){
@@ -400,7 +614,7 @@ function renderTabs(){
     tab.innerHTML = `
       <span class="ext-badge" style="background:${EXT_COLORS[f.ext]}">${f.ext.slice(0,2).toUpperCase()}</span>
       <span>${f.name}</span>
-      <span class="tab-close" onclick="event.stopPropagation();closeTab(${i})">?</span>`;
+      <span class="tab-close" onclick="event.stopPropagation();closeTab(${i})">x</span>`;
     tabsEl.appendChild(tab);
   });
 }
@@ -422,8 +636,8 @@ function openFile(i){
 
 function renderEditor(){
   const editor = document.getElementById('editor');
-  if(activeTab===-1){
-    editor.innerHTML = '<div class="empty-editor">Selecione um arquivo no Explorer para encontrar o bug de gramática ?</div>';
+  if(activeTab===-1 || !FILES.length){
+    editor.innerHTML = '<div class="empty-editor">Selecione um arquivo no Explorer para encontrar o erro de gramatica.</div>';
     document.getElementById('statusLang').textContent = 'Plain Text';
     return;
   }
@@ -435,7 +649,7 @@ function renderEditor(){
     line.forEach((s, segIdx)=>{
       if(s.c==='bug'){
         if(f.solved){
-          html += `<span class="fixed-word">${f.fixedText}</span><span class="fixed-check">?</span>`;
+          html += `<span class="fixed-word">${f.fixedText}</span><span class="fixed-check">OK</span>`;
         } else {
           html += `<span class="bug-word" data-line="${lineIdx}" data-seg="${segIdx}" onclick="openQuickFix(event,${lineIdx},${segIdx})">${s.t}</span>`;
         }
@@ -450,12 +664,12 @@ function renderEditor(){
 
 function renderProblemsPanel(){
   const panel = document.getElementById('problemsPanel');
-  if(activeTab===-1){ panel.innerHTML=''; return; }
+  if(activeTab===-1 || !FILES.length){ panel.innerHTML=''; return; }
   const f = FILES[activeTab];
   if(f.solved){
-    panel.innerHTML = `<div class="ok-line">? Nenhum problema encontrado em ${f.name}. Tempo verbal correto!</div>`;
+    panel.innerHTML = `<div class="ok-line">[OK] Nenhum problema encontrado em ${f.name}. Tempo verbal correto!</div>`;
   } else {
-    panel.innerHTML = `<div class="prob-line">? 1 problema: possível erro de tempo verbal em um comentário de ${f.name}. Toque na palavra sublinhada em vermelho.</div>`;
+    panel.innerHTML = `<div class="prob-line">[!] 1 problema: possivel erro de tempo verbal em um comentario de ${f.name}. Toque na palavra sublinhada em vermelho.</div>`;
   }
 }
 
@@ -487,6 +701,7 @@ function switchPanel(p){
 }
 
 function openQuickFix(evt, lineIdx, segIdx){
+  if(sessionOver) return;
   const f = FILES[activeTab];
   if(f.solved) return;
   const seg = f.lines[lineIdx][segIdx];
@@ -531,18 +746,20 @@ function chooseOption(idx, el){
     f.fixedText = seg.options[idx];
     fixedCount++;
     document.getElementById('quickfix-popup').classList.add('hidden');
-    log(`Corrigido em ${f.name}: "${seg.options[idx]}" ? — ${seg.explain}`, 'log-ok');
-    showToast(`? Corrigido! ${seg.explain}`);
+    log(`Corrigido em ${f.name}: "${seg.options[idx]}" -- ${seg.explain}`, 'log-ok');
+    showToast(`Corrigido! ${seg.explain}`);
     renderAll();
     if(fixedCount === FILES.length){
-      setTimeout(showSuccessOverlay, 900);
+      sessionOver = true;
+      if(timerInterval) clearInterval(timerInterval);
+      setTimeout(()=>showEndScreen(true), 900);
     }
   } else {
     f.attempts = (f.attempts||0)+1;
     el.classList.add('wrong-flash');
     const bugSpan = document.querySelector(`.bug-word[data-line="${lineIdx}"][data-seg="${segIdx}"]`);
     if(bugSpan){ bugSpan.classList.add('shake'); setTimeout(()=>bugSpan.classList.remove('shake'),350); }
-    log(`Tentativa incorreta em ${f.name}. Ainda há um erro de tempo verbal na linha ${lineIdx+1}.`, 'log-err');
+    log(`Tentativa incorreta em ${f.name}. Ainda ha um erro de tempo verbal na linha ${lineIdx+1}.`, 'log-err');
     setTimeout(()=>el.classList.remove('wrong-flash'), 350);
   }
 }
@@ -568,25 +785,45 @@ function showToast(msg){
   toastTimer = setTimeout(()=>{ toast.classList.remove('show'); setTimeout(()=>toast.remove(),300); }, 4200);
 }
 
-/* ---------- Success overlay + confetti ---------- */
-function showSuccessOverlay(){
+/* ---------- End screen (success or timeout) ---------- */
+function showEndScreen(success){
   const overlay = document.getElementById('overlay');
   overlay.classList.remove('hidden');
   const totalAttempts = FILES.reduce((s,f)=>s+(f.attempts||0),0);
-  const perfect = FILES.filter(f=>!f.attempts).length;
-  let gradeLetter = 'A+';
-  if(totalAttempts>2 && totalAttempts<=5) gradeLetter='A';
-  else if(totalAttempts>5 && totalAttempts<=9) gradeLetter='B';
-  else if(totalAttempts>9) gradeLetter='C';
-  document.getElementById('finalGrade').textContent = gradeLetter;
-  document.getElementById('finalDetails').textContent =
-    `${perfect} / ${FILES.length} bugs corrigidos na primeira tentativa — ${totalAttempts} erro(s) no total.`;
+  const perfect = FILES.filter(f=>!f.attempts && f.solved).length;
+  const total = FILES.length;
+  const timeUsedSec = Math.round((Date.now()-sessionStartTime)/1000);
 
-  const lines = [
+  let gradeLetter = 'A+';
+  if(!success){
+    gradeLetter = fixedCount >= total ? 'A' : (fixedCount >= total*0.6 ? 'B' : 'C');
+  } else {
+    if(totalAttempts>Math.round(total*0.4) && totalAttempts<=total) gradeLetter='A';
+    else if(totalAttempts>total && totalAttempts<=total*1.8) gradeLetter='B';
+    else if(totalAttempts>total*1.8) gradeLetter='C';
+  }
+
+  document.getElementById('overlayTitle').textContent = success ? 'BUILD SUCCESSFUL' : "TIME'S UP";
+  document.getElementById('finalGrade').textContent = gradeLetter;
+  document.getElementById('finalGrade').className = 'grade' + (success? '' : ' orange');
+  document.getElementById('badgeArea').innerHTML = success
+    ? '<div class="check-badge"></div>'
+    : '<div class="timeout-badge">!</div>';
+  document.getElementById('finalDetails').textContent =
+    `${fixedCount} / ${total} bugs corrigidos -- ${totalAttempts} erro(s) no total` +
+    (timerEnabled ? ` -- tempo usado: ${formatTime(timeUsedSec)}` : '');
+
+  const lines = success ? [
     '$ npm run build',
     '> compiling grammar rules...',
-    '> checking simple present / present continuous...',
-    '> running test suite... 10/10 passed',
+    '> checking simple present / continuous / past / future / perfect...',
+    `> running test suite... ${total}/${total} passed`,
+    ''
+  ] : [
+    '$ npm run build',
+    '> sprint timer reached 00:00',
+    `> partial result: ${fixedCount}/${total} tests passed`,
+    '> build stopped',
     ''
   ];
   const typingEl = document.getElementById('terminalTyping');
@@ -609,7 +846,12 @@ function showSuccessOverlay(){
     }, 22);
   }
   typeLine();
-  startConfetti();
+  if(success) startConfetti();
+}
+
+function formatTime(totalSec){
+  const m = Math.floor(totalSec/60), s = totalSec%60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
 
 function startConfetti(){
@@ -654,7 +896,6 @@ window.addEventListener('resize', ()=>{
 });
 
 renderAll();
-openFile(0);
 </script>
 </body>
 </html>
