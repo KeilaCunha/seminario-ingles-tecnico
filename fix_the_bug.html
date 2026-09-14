@@ -263,7 +263,7 @@
 
 <div id="app">
   <div class="titlebar">
-    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Abrir menu">
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="(Abrir menu) Open menu">
       <span class="bar"></span><span class="bar"></span><span class="bar"></span>
     </button>
     <div class="dots"><div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div></div>
@@ -277,7 +277,7 @@
       <div class="sidebar-project"><span class="folder-icon"></span> seminario-ingles-tecnico</div>
       <div id="fileList"></div>
       <div class="sidebar-footer">
-        <div class="progress-label" id="progressLabel">Bugs corrigidos: 0 / 5</div>
+        <div class="progress-label" id="progressLabel">(Bugs corrigidos) Bugs fixed: 0 / 5</div>
         <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
       </div>
     </div>
@@ -285,7 +285,7 @@
     <div class="editor-area">
       <div class="tabs" id="tabs"></div>
       <div class="editor" id="editor"></div>
-      <button id="nextFileBtn" class="next-file-btn hidden" onclick="goToNextFile()">Proximo arquivo -&gt;</button>
+      <button id="nextFileBtn" class="next-file-btn hidden" onclick="goToNextFile()">(Proximo arquivo) Next file -&gt;</button>
       <div class="bottom-panel">
         <div class="panel-tabs">
           <div class="panel-tab active" data-panel="problems" id="tabProblems">Problems</div>
@@ -312,7 +312,7 @@
 <div id="sprintTimer" class="sprint-timer hidden">05:00</div>
 
 <div id="quickfix-popup" class="hidden">
-  <div class="qf-header">Quick Fix -- corrija o tempo verbal</div>
+  <div class="qf-header">(Corrija o tempo verbal) Quick Fix -- fix the verb tense</div>
   <div id="qfOptions"></div>
 </div>
 
@@ -320,15 +320,15 @@
 <div id="startScreen" class="full-overlay">
   <div class="card-box">
     <h1>Fix the Bug</h1>
-    <h2>English Tenses Debugger -- baseado no conteudo de Ingles Tecnico</h2>
+    <h2>(Baseado no conteudo de Ingles Tecnico) English Tenses Debugger -- based on the English course content</h2>
 
     <div class="timer-row">
       <input type="checkbox" id="timerEnableCheckbox" onchange="onTimerToggle()">
-      <label for="timerEnableCheckbox">Ativar cronometro de sprint (opcional)</label>
+      <label for="timerEnableCheckbox">(Ativar cronometro de sprint - opcional) Enable sprint timer (optional)</label>
       <input type="number" id="timerMinutesInput" value="5" min="1" max="30" disabled>
     </div>
 
-    <button class="primary-btn" onclick="startSession()">Iniciar sessao</button>
+    <button class="primary-btn" onclick="startSession()">(Iniciar sessao) Start session</button>
   </div>
 </div>
 
@@ -342,7 +342,7 @@
     <div class="grade" id="finalGrade">--</div>
     <p class="details" id="finalDetails"></p>
 
-    <button class="secondary-btn" onclick="location.reload()">Reiniciar (novas perguntas)</button>
+    <button class="secondary-btn" onclick="location.reload()">(Reiniciar - novas perguntas) Restart (new questions)</button>
   </div>
 </div>
 
@@ -613,7 +613,7 @@ function renderSidebar(){
       <span class="status-dot ${f.solved?'done':''}"></span>`;
     list.appendChild(div);
   });
-  document.getElementById('progressLabel').textContent = `Bugs corrigidos: ${fixedCount} / ${FILES.length}`;
+  document.getElementById('progressLabel').textContent = `(Bugs corrigidos) Bugs fixed: ${fixedCount} / ${FILES.length}`;
   document.getElementById('progressFill').style.width = (FILES.length? fixedCount/FILES.length*100 : 0)+'%';
   document.getElementById('statusScore').textContent = `Bugs: ${fixedCount} / ${FILES.length}`;
 }
@@ -652,7 +652,7 @@ function openFile(i){
 function renderEditor(){
   const editor = document.getElementById('editor');
   if(activeTab===-1 || !FILES.length){
-    editor.innerHTML = '<div class="empty-editor">Selecione um arquivo no Explorer para encontrar o erro de gramatica.</div>';
+    editor.innerHTML = '<div class="empty-editor">(Selecione um arquivo no Explorer para encontrar o erro de gramatica) Select a file in the Explorer to find the grammar error.</div>';
     document.getElementById('statusLang').textContent = 'Plain Text';
     return;
   }
@@ -682,9 +682,9 @@ function renderProblemsPanel(){
   if(activeTab===-1 || !FILES.length){ panel.innerHTML=''; return; }
   const f = FILES[activeTab];
   if(f.solved){
-    panel.innerHTML = `<div class="ok-line">[OK] Nenhum problema encontrado em ${f.name}. Tempo verbal correto!</div>`;
+    panel.innerHTML = `<div class="ok-line">[OK] (Nenhum problema encontrado. Tempo verbal correto!) No problems found in ${f.name}. Verb tense is correct!</div>`;
   } else {
-    panel.innerHTML = `<div class="prob-line">[!] 1 problema: possivel erro de tempo verbal em um comentario de ${f.name}. Toque na palavra sublinhada em vermelho.</div>`;
+    panel.innerHTML = `<div class="prob-line">[!] (Possivel erro de tempo verbal. Toque na palavra sublinhada em vermelho.) Possible verb tense error in a comment of ${f.name}. Click the underlined word in red.</div>`;
   }
 }
 
@@ -781,8 +781,8 @@ function chooseOption(idx, el){
     f.fixedText = seg.options[idx];
     fixedCount++;
     document.getElementById('quickfix-popup').classList.add('hidden');
-    log(`Corrigido em ${f.name}: "${seg.options[idx]}" -- ${seg.explain}`, 'log-ok');
-    showToast(`Corrigido! ${seg.explain}`);
+    log(`(Corrigido em ${f.name}) Fixed in ${f.name}: "${seg.options[idx]}" -- ${seg.explain}`, 'log-ok');
+    showToast(`(Corrigido!) Fixed! ${seg.explain}`);
     renderAll();
     if(fixedCount === FILES.length){
       sessionOver = true;
@@ -794,7 +794,7 @@ function chooseOption(idx, el){
     el.classList.add('wrong-flash');
     const bugSpan = document.querySelector(`.bug-word[data-line="${lineIdx}"][data-seg="${segIdx}"]`);
     if(bugSpan){ bugSpan.classList.add('shake'); setTimeout(()=>bugSpan.classList.remove('shake'),350); }
-    log(`Tentativa incorreta em ${f.name}. Ainda ha um erro de tempo verbal na linha ${lineIdx+1}.`, 'log-err');
+    log(`(Tentativa incorreta. Ainda ha um erro na linha ${lineIdx+1}.) Incorrect attempt in ${f.name}. There is still a verb tense error on line ${lineIdx+1}.`, 'log-err');
     setTimeout(()=>el.classList.remove('wrong-flash'), 350);
   }
 }
@@ -844,9 +844,11 @@ function showEndScreen(success){
   document.getElementById('badgeArea').innerHTML = success
     ? '<div class="check-badge"></div>'
     : '<div class="timeout-badge">!</div>';
-  document.getElementById('finalDetails').textContent =
-    `${fixedCount} / ${total} bugs corrigidos -- ${totalAttempts} erro(s) no total` +
-    (timerEnabled ? ` -- tempo usado: ${formatTime(timeUsedSec)}` : '');
+  const ptSummary = `${fixedCount} de ${total} bugs corrigidos, ${totalAttempts} erro(s) no total` +
+    (timerEnabled ? `, tempo usado: ${formatTime(timeUsedSec)}` : '');
+  const enSummary = `${fixedCount} / ${total} bugs fixed -- ${totalAttempts} mistake(s) in total` +
+    (timerEnabled ? ` -- time used: ${formatTime(timeUsedSec)}` : '');
+  document.getElementById('finalDetails').textContent = `(${ptSummary}) ${enSummary}`;
 
   const lines = success ? [
     '$ npm run build',
