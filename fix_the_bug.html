@@ -128,6 +128,18 @@
   .sprint-timer.low{border-color:var(--red);color:var(--red);animation:pulse 1s infinite;}
   @keyframes pulse{0%,100%{transform:scale(1);} 50%{transform:scale(1.08);}}
 
+  .next-file-btn{
+    position:fixed;left:50%;bottom:190px;transform:translateX(-50%);
+    background:var(--green);color:#0a0a0a;border:none;padding:12px 22px;
+    border-radius:24px;font-family:inherit;font-size:14px;font-weight:bold;
+    cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.5);z-index:46;
+    display:flex;align-items:center;gap:6px;white-space:nowrap;
+    animation:popIn .3s ease;
+  }
+  .next-file-btn.hidden{display:none;}
+  .next-file-btn:hover{background:#5ddbb0;}
+  @keyframes popIn{0%{transform:translateX(-50%) translateY(10px) scale(.9);opacity:0;} 100%{transform:translateX(-50%) translateY(0) scale(1);opacity:1;}}
+
   .tok-fn{color:var(--fn);}
 
   .bug-word{ }
@@ -235,6 +247,8 @@
     .card-box .grade{font-size:34px;}
 
     .sprint-timer{top:auto;bottom:130px;right:10px;font-size:16px;padding:5px 10px;}
+
+    .next-file-btn{bottom:150px;padding:11px 18px;font-size:13px;}
   }
 
   @media (max-width: 420px){
@@ -271,6 +285,7 @@
     <div class="editor-area">
       <div class="tabs" id="tabs"></div>
       <div class="editor" id="editor"></div>
+      <button id="nextFileBtn" class="next-file-btn hidden" onclick="goToNextFile()">Proximo arquivo -&gt;</button>
       <div class="bottom-panel">
         <div class="panel-tabs">
           <div class="panel-tab active" data-panel="problems" id="tabProblems">Problems</div>
@@ -678,6 +693,26 @@ function renderAll(){
   renderTabs();
   renderEditor();
   renderProblemsPanel();
+  updateNextButton();
+}
+
+function updateNextButton(){
+  const btn = document.getElementById('nextFileBtn');
+  if(sessionOver || activeTab===-1 || !FILES.length){ btn.classList.add('hidden'); return; }
+  const f = FILES[activeTab];
+  const hasNextUnsolved = FILES.some((file,i)=> i!==activeTab && !file.solved);
+  btn.classList.toggle('hidden', !(f.solved && hasNextUnsolved));
+}
+
+function goToNextFile(){
+  const n = FILES.length;
+  for(let step=1; step<=n; step++){
+    const idx = (activeTab+step) % n;
+    if(!FILES[idx].solved){
+      openFile(idx);
+      return;
+    }
+  }
 }
 
 function log(msg, cls){
