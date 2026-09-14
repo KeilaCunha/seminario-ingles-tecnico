@@ -2,7 +2,8 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Fix the Bug ‚Äî English Tenses Debugger</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Fix the Bug ó English Tenses Debugger</title>
 <style>
   :root{
     --bg:#1e1e1e; --sidebar:#252526; --tabsbar:#2d2d2d; --activeTab:#1e1e1e;
@@ -10,7 +11,7 @@
     --accent:#0e639c; --accent2:#1177bb; --green:#4ec9a0; --red:#f14c4c;
     --kw:#569cd6; --str:#ce9178; --com:#6a9955; --fn:#dcdcaa; --num:#b5cea8;
   }
-  *{box-sizing:border-box;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;height:100%;background:#0a0a0a;font-family:'Consolas','Courier New',monospace;color:var(--text);overflow:hidden;}
   #app{display:flex;flex-direction:column;height:100vh;}
 
@@ -18,12 +19,19 @@
     background:#323233;height:34px;display:flex;align-items:center;padding:0 12px;
     border-bottom:1px solid var(--border);flex-shrink:0;
   }
-  .dots{display:flex;gap:8px;margin-right:16px;}
+  .dots{display:flex;gap:8px;margin-right:16px;flex-shrink:0;}
   .dot{width:12px;height:12px;border-radius:50%;}
   .dot.red{background:#ff5f56;} .dot.yellow{background:#ffbd2e;} .dot.green{background:#27c93f;}
-  .titlebar-text{font-size:12px;color:var(--muted);flex:1;text-align:center;margin-right:80px;}
+  .titlebar-text{font-size:12px;color:var(--muted);flex:1;text-align:center;margin-right:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hamburger-btn{
+    display:none;background:none;border:none;color:#fff;font-size:18px;
+    margin-right:10px;cursor:pointer;padding:2px 8px;flex-shrink:0;
+  }
 
-  .main-layout{flex:1;display:flex;min-height:0;}
+  .main-layout{flex:1;display:flex;min-height:0;position:relative;}
+
+  .sidebar-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:39;}
+  .sidebar-backdrop.hidden{display:none;}
 
   .sidebar{
     width:230px;background:var(--sidebar);border-right:1px solid var(--border);
@@ -32,7 +40,7 @@
   .sidebar-title{font-size:11px;color:var(--muted);padding:14px 16px 8px;letter-spacing:1px;text-transform:uppercase;}
   .sidebar-project{font-size:12px;color:#cccccc;padding:2px 12px 10px;font-weight:bold;display:flex;align-items:center;gap:6px;}
   .file-item{
-    display:flex;align-items:center;gap:8px;padding:6px 12px 6px 24px;cursor:pointer;
+    display:flex;align-items:center;gap:8px;padding:8px 12px 8px 24px;cursor:pointer;
     font-size:13px;color:#cccccc;border-left:2px solid transparent;
   }
   .file-item:hover{background:#2a2d2e;}
@@ -63,8 +71,8 @@
   .tab-close{opacity:.6;padding:0 2px;border-radius:3px;}
   .tab-close:hover{background:#5a5a5a;opacity:1;}
 
-  .editor{flex:1;overflow-y:auto;background:var(--bg);padding:14px 0;}
-  .empty-editor{color:var(--muted);text-align:center;margin-top:80px;font-size:13px;}
+  .editor{flex:1;overflow-y:auto;background:var(--bg);padding:14px 0;-webkit-overflow-scrolling:touch;}
+  .empty-editor{color:var(--muted);text-align:center;margin-top:80px;font-size:13px;padding:0 20px;}
   .code-line{display:flex;font-size:14px;line-height:22px;padding:0 16px;}
   .code-line:hover{background:#2a2a2a;}
   .line-num{width:36px;text-align:right;color:#5a5a5a;user-select:none;margin-right:18px;flex-shrink:0;}
@@ -91,7 +99,7 @@
   .panel-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
   .panel-tab{padding:6px 14px;font-size:11px;letter-spacing:.5px;color:var(--muted);cursor:pointer;text-transform:uppercase;}
   .panel-tab.active{color:#fff;border-bottom:2px solid var(--accent2);}
-  .panel-content{flex:1;overflow-y:auto;padding:8px 14px;font-size:12.5px;}
+  .panel-content{flex:1;overflow-y:auto;padding:8px 14px;font-size:12.5px;-webkit-overflow-scrolling:touch;}
   #problemsPanel .prob-line{color:#e8ab53;margin:3px 0;}
   #problemsPanel .ok-line{color:var(--green);margin:3px 0;}
   #terminalPanel{color:#c8c8c8;}
@@ -102,19 +110,20 @@
 
   .statusbar{
     height:24px;background:var(--accent);display:flex;align-items:center;
-    justify-content:space-between;padding:0 12px;font-size:12px;flex-shrink:0;color:#fff;
+    justify-content:space-between;padding:0 12px;font-size:12px;flex-shrink:0;color:#fff;overflow:hidden;
   }
-  .statusbar span{margin-right:16px;display:flex;align-items:center;gap:5px;}
+  .statusbar .sb-left, .statusbar .sb-right{display:flex;min-width:0;}
+  .statusbar span{margin-right:16px;display:flex;align-items:center;gap:5px;white-space:nowrap;}
 
   /* Quick fix popup */
   #quickfix-popup{
-    position:absolute;background:#252526;border:1px solid #454545;border-radius:4px;
-    box-shadow:0 4px 16px rgba(0,0,0,.5);z-index:50;min-width:260px;
+    position:fixed;background:#252526;border:1px solid #454545;border-radius:4px;
+    box-shadow:0 4px 16px rgba(0,0,0,.5);z-index:50;width:270px;max-width:88vw;
     font-size:13px;overflow:hidden;
   }
   #quickfix-popup.hidden{display:none;}
   .qf-header{background:#2d2d2d;padding:6px 12px;color:var(--muted);font-size:11px;border-bottom:1px solid #3c3c3c;}
-  .qf-option{padding:8px 12px;cursor:pointer;color:var(--text);border-bottom:1px solid #303030;}
+  .qf-option{padding:10px 12px;cursor:pointer;color:var(--text);border-bottom:1px solid #303030;}
   .qf-option:last-child{border-bottom:none;}
   .qf-option:hover{background:var(--accent2);color:#fff;}
   .qf-option.wrong-flash{background:var(--red)!important;color:#fff!important;}
@@ -130,13 +139,13 @@
   /* Overlay success */
   #overlay{
     position:fixed;inset:0;background:rgba(0,0,0,.92);display:flex;align-items:center;
-    justify-content:center;z-index:100;flex-direction:column;
+    justify-content:center;z-index:100;flex-direction:column;padding:16px;
   }
   #overlay.hidden{display:none;}
   #confetti-canvas{position:absolute;inset:0;pointer-events:none;}
   .success-box{
     position:relative;background:#181818;border:1px solid #333;border-radius:8px;
-    padding:36px 48px;text-align:center;max-width:600px;z-index:2;
+    padding:36px 48px;text-align:center;max-width:600px;width:100%;z-index:2;
   }
   .success-box .prompt{color:var(--green);font-size:13px;text-align:left;margin-bottom:18px;min-height:110px;}
   .success-box h1{color:#fff;font-size:26px;margin:10px 0;}
@@ -149,20 +158,58 @@
   .restart-btn:hover{background:#1a8cd8;}
   .cursor-blink{display:inline-block;width:7px;height:14px;background:var(--green);animation:blink 1s step-end infinite;vertical-align:middle;}
   @keyframes blink{50%{opacity:0;}}
+
+  /* ---------- Responsive: tablet / mobile ---------- */
+  @media (max-width: 860px){
+    .hamburger-btn{display:inline-block;}
+    .titlebar-text{margin-right:8px;}
+
+    .sidebar{
+      position:fixed;top:34px;bottom:0;left:-260px;width:250px;z-index:40;
+      transition:left .25s ease;box-shadow:2px 0 16px rgba(0,0,0,.6);
+    }
+    .sidebar.open{left:0;}
+
+    .bottom-panel{height:120px;}
+    .panel-content{font-size:12px;padding:8px 10px;}
+
+    .code-line{font-size:13px;line-height:20px;padding:0 10px;}
+    .line-num{width:24px;margin-right:10px;}
+
+    .statusbar{font-size:11px;padding:0 8px;}
+    .statusbar span{margin-right:8px;}
+    .hide-mobile{display:none!important;}
+
+    .toast{left:12px;right:12px;bottom:132px;max-width:none;}
+
+    .success-box{padding:26px 20px;}
+    .success-box .prompt{font-size:11.5px;min-height:90px;}
+    .success-box h1{font-size:20px;}
+    .success-box .grade{font-size:38px;}
+  }
+
+  @media (max-width: 420px){
+    .titlebar-text{display:none;}
+    .code-line{font-size:12.5px;}
+    .file-item{font-size:12.5px;}
+    .tab{font-size:12px;padding:8px 8px 8px 10px;}
+  }
 </style>
 </head>
 <body>
 
 <div id="app">
   <div class="titlebar">
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Abrir menu">?</button>
     <div class="dots"><div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div></div>
-    <div class="titlebar-text">fix-the-bug ‚Äî english-tenses-debugger</div>
+    <div class="titlebar-text">fix-the-bug ó english-tenses-debugger</div>
   </div>
 
   <div class="main-layout">
-    <div class="sidebar">
+    <div class="sidebar-backdrop hidden" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
+    <div class="sidebar" id="sidebar">
       <div class="sidebar-title">Explorer</div>
-      <div class="sidebar-project">üìÅ seminario-ingles-tecnico</div>
+      <div class="sidebar-project">?? seminario-ingles-tecnico</div>
       <div id="fileList"></div>
       <div class="sidebar-footer">
         <div class="progress-label" id="progressLabel">Bugs corrigidos: 0 / 10</div>
@@ -185,19 +232,19 @@
   </div>
 
   <div class="statusbar">
-    <div style="display:flex;">
-      <span>üåø main</span>
+    <div class="sb-left">
+      <span>?? main</span>
       <span id="statusLang">Plain Text</span>
     </div>
-    <div style="display:flex;">
-      <span id="statusScore">üêû 0 / 10</span>
-      <span>UTF-8</span>
+    <div class="sb-right">
+      <span id="statusScore">?? 0 / 10</span>
+      <span class="hide-mobile">UTF-8</span>
     </div>
   </div>
 </div>
 
 <div id="quickfix-popup" class="hidden">
-  <div class="qf-header">üí° Quick Fix... corrija o tempo verbal</div>
+  <div class="qf-header">?? Quick Fix... corrija o tempo verbal</div>
   <div id="qfOptions"></div>
 </div>
 
@@ -205,15 +252,16 @@
   <canvas id="confetti-canvas"></canvas>
   <div class="success-box">
     <div class="prompt" id="terminalTyping"></div>
-    <h1>‚úÖ BUILD SUCCEEDED</h1>
-    <div class="grade" id="finalGrade">‚Äî</div>
+    <h1>? BUILD SUCCEEDED</h1>
+    <div class="grade" id="finalGrade">ó</div>
     <p id="finalDetails"></p>
-    <button class="restart-btn" onclick="location.reload()">‚Üª Rodar novamente</button>
+    <button class="restart-btn" onclick="location.reload()">? Rodar novamente</button>
   </div>
 </div>
 
 <script>
 const EXT_COLORS = { js:'#f1e05a', py:'#3572A5', c:'#5c6bc0', yml:'#cb171e' };
+const MOBILE_BREAKPOINT = 860;
 
 function seg(t,c){ return {t,c}; }
 function bug(t,options,correct,explain){ return {t,c:'bug',options,correct,explain}; }
@@ -221,7 +269,7 @@ function bug(t,options,correct,explain){ return {t,c:'bug',options,correct,expla
 const FILES = [
   { name:'server.js', ext:'js', lang:'JavaScript', lines:[
     [seg('// This function ','com'), bug('is process',['is process','processes','process','are processing'],1,
-      'Comportamento padr√£o da fun√ß√£o, n√£o uma a√ß√£o pontual ‚Üí Simple Present. Sujeito √© "this function" (it) ‚Üí acrescenta -s: processes.'), seg(' incoming requests and returns a response.','com')],
+      'Comportamento padr„o da funÁ„o, n„o uma aÁ„o pontual ? Simple Present. Sujeito È "this function" (it) ? acrescenta -s: processes.'), seg(' incoming requests and returns a response.','com')],
     [seg('function ','kw'), seg('handleRequest','tok-fn'), seg('(req, res) {','pl')],
     [seg('  const data = ','pl'), seg('processData','tok-fn'), seg('(req.body);','pl')],
     [seg('  res.send(data);','pl')],
@@ -230,7 +278,7 @@ const FILES = [
   { name:'algorithm.py', ext:'py', lang:'Python', lines:[
     [seg('# The quicksort algorithm sorts the array by choosing a pivot element.','com')],
     [seg('# Right now, ','com'), bug('it divide',['it divide','it divides','it is dividing','it was dividing'],2,
-      '"Right now" indica uma a√ß√£o em andamento no momento da fala ‚Üí Present Continuous: it is dividing.'), seg(' the list into two sublists.','com')],
+      '"Right now" indica uma aÁ„o em andamento no momento da fala ? Present Continuous: it is dividing.'), seg(' the list into two sublists.','com')],
     [seg('def ','kw'), seg('quicksort','tok-fn'), seg('(arr):','pl')],
     [seg('    if len(arr) <= 1:','pl')],
     [seg('        return arr','kw')]
@@ -238,14 +286,14 @@ const FILES = [
   { name:'backup.py', ext:'py', lang:'Python', lines:[
     [seg('# The database backup runs every night at midnight.','com')],
     [seg('# Currently, ','com'), bug('the system upload',['the system upload','the system uploads','the system is uploading','the system was uploading'],2,
-      '"Currently" indica uma a√ß√£o em progresso agora ‚Üí Present Continuous: the system is uploading.'), seg(' the backup file to the cloud.','com')],
+      '"Currently" indica uma aÁ„o em progresso agora ? Present Continuous: the system is uploading.'), seg(' the backup file to the cloud.','com')],
     [seg('def ','kw'), seg('run_backup','tok-fn'), seg('():','pl')],
     [seg('    connection = ','pl'), seg('connect_to_db','tok-fn'), seg('()','pl')]
   ]},
   { name:'network.c', ext:'c', lang:'C', lines:[
     [seg('// The socket listens for incoming connections on port 8080.','com')],
     [seg('// At this moment, the client ','com'), bug('is send',['is send','is sending','send','sends'],1,
-      '"At this moment" ‚Üí a√ß√£o em andamento agora ‚Üí Present Continuous: is sending.'), seg(' a large file to the server.','com')],
+      '"At this moment" ? aÁ„o em andamento agora ? Present Continuous: is sending.'), seg(' a large file to the server.','com')],
     [seg('int ','kw'), seg('main','tok-fn'), seg('() {','pl')],
     [seg('    int socket_fd = socket(AF_INET, SOCK_STREAM, 0);','pl')],
     [seg('    return 0;','kw')],
@@ -254,7 +302,7 @@ const FILES = [
   { name:'api.js', ext:'js', lang:'JavaScript', lines:[
     [seg('// This endpoint usually returns a JSON object with user data.','com')],
     [seg('// TODO: ','com'), bug('the team fix',['the team fix','the team fixes','the team are fixing','the team fixing'],1,
-      '"Every sprint" indica rotina/h√°bito ‚Üí Simple Present. "Team" √© tratado como singular (it) ‚Üí acrescenta -s: fixes.'), seg(' this bug every sprint.','com')],
+      '"Every sprint" indica rotina/h·bito ? Simple Present. "Team" È tratado como singular (it) ? acrescenta -s: fixes.'), seg(' this bug every sprint.','com')],
     [seg('app.get','tok-fn'), seg("('/users', (req, res) => {",'pl')],
     [seg('  res.json(users);','pl')],
     [seg('});','pl')]
@@ -262,14 +310,14 @@ const FILES = [
   { name:'cache.py', ext:'py', lang:'Python', lines:[
     [seg('# The cache stores frequently accessed data to improve performance.','com')],
     [seg('# It usually ','com'), bug('take',['take','takes','is taking','taking'],1,
-      '"Usually" √© adv√©rbio de frequ√™ncia t√≠pico do Simple Present. Sujeito "it" (3¬™ pessoa singular) ‚Üí acrescenta -s: takes.'), seg(' less than 10 milliseconds to respond.','com')],
+      '"Usually" È advÈrbio de frequÍncia tÌpico do Simple Present. Sujeito "it" (3™ pessoa singular) ? acrescenta -s: takes.'), seg(' less than 10 milliseconds to respond.','com')],
     [seg('def ','kw'), seg('get_from_cache','tok-fn'), seg('(key):','pl')],
     [seg('    return cache.get(key)','kw')]
   ]},
   { name:'auth.js', ext:'js', lang:'JavaScript', lines:[
     [seg('// The authentication service verifies tokens on every request.','com')],
     [seg('// Security logs ','com'), bug('shows',['shows','show','is showing','are showed'],1,
-      '"Logs" √© plural (they) ‚Üí sem -s no Simple Present: show, e n√£o shows.'), seg(' every failed login attempt.','com')],
+      '"Logs" È plural (they) ? sem -s no Simple Present: show, e n„o shows.'), seg(' every failed login attempt.','com')],
     [seg('function ','kw'), seg('verifyToken','tok-fn'), seg('(token) {','pl')],
     [seg('  return jwt.verify(token, SECRET);','pl')],
     [seg('}','pl')]
@@ -277,13 +325,13 @@ const FILES = [
   { name:'loop.py', ext:'py', lang:'Python', lines:[
     [seg('# This loop iterates over each element in the list.','com')],
     [seg('# Wait, the counter ','com'), bug("doesn't increasing",["doesn't increasing","isn't increasing","don't increase","not increase"],1,
-      'Estamos observando o comportamento agora ("Wait...") ‚Üí Present Continuous negativo: isn\'t increasing (to be + not + verbo-ing).'), seg(' correctly.','com')],
+      'Estamos observando o comportamento agora ("Wait...") ? Present Continuous negativo: isn\'t increasing (to be + not + verbo-ing).'), seg(' correctly.','com')],
     [seg('for ','kw'), seg('i ','pl'), seg('in ','kw'), seg('range(len(items)):','pl')],
     [seg('    counter += 1','pl')]
   ]},
   { name:'deploy.yml', ext:'yml', lang:'YAML', lines:[
     [seg('# This pipeline usually ','com'), bug('deploy',['deploy','deploys','is deploying','deploying'],1,
-      '"Usually" ‚Üí rotina/h√°bito ‚Üí Simple Present. Sujeito "pipeline" (it) ‚Üí acrescenta -s: deploys.'), seg(' the app to production after tests pass.','com')],
+      '"Usually" ? rotina/h·bito ? Simple Present. Sujeito "pipeline" (it) ? acrescenta -s: deploys.'), seg(' the app to production after tests pass.','com')],
     [seg('# Right now, the pipeline is failing because of a missing dependency.','com')],
     [seg('name: ','kw'), seg('Deploy Pipeline','str')],
     [seg('on: ','kw'), seg('[push]','pl')]
@@ -292,7 +340,7 @@ const FILES = [
     [seg('# The monitoring dashboard displays real-time metrics.','com')],
     [seg('# Currently, three servers are running at high CPU usage.','com')],
     [seg('# ','com'), bug('Everything are working',['Everything are working','Everything is working','Everything work','Everything working'],1,
-      '"Everything" √© sempre tratado como singular ‚Üí usa "is", nunca "are": Everything is working.'), seg(' as expected.','com')],
+      '"Everything" È sempre tratado como singular ? usa "is", nunca "are": Everything is working.'), seg(' as expected.','com')],
     [seg('def ','kw'), seg('check_status','tok-fn'), seg('():','pl')],
     [seg('    return "OK"','str')]
   ]}
@@ -310,6 +358,19 @@ function tokClass(c){
   return 'tok-pl';
 }
 
+function isMobile(){ return window.innerWidth <= MOBILE_BREAKPOINT; }
+
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarBackdrop').classList.toggle('hidden');
+}
+function closeSidebarOnMobile(){
+  if(isMobile()){
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarBackdrop').classList.add('hidden');
+  }
+}
+
 function renderSidebar(){
   const list = document.getElementById('fileList');
   list.innerHTML = '';
@@ -325,7 +386,7 @@ function renderSidebar(){
   });
   document.getElementById('progressLabel').textContent = `Bugs corrigidos: ${fixedCount} / ${FILES.length}`;
   document.getElementById('progressFill').style.width = (fixedCount/FILES.length*100)+'%';
-  document.getElementById('statusScore').textContent = `üêû ${fixedCount} / ${FILES.length}`;
+  document.getElementById('statusScore').textContent = `?? ${fixedCount} / ${FILES.length}`;
 }
 
 function renderTabs(){
@@ -339,7 +400,7 @@ function renderTabs(){
     tab.innerHTML = `
       <span class="ext-badge" style="background:${EXT_COLORS[f.ext]}">${f.ext.slice(0,2).toUpperCase()}</span>
       <span>${f.name}</span>
-      <span class="tab-close" onclick="event.stopPropagation();closeTab(${i})">‚úï</span>`;
+      <span class="tab-close" onclick="event.stopPropagation();closeTab(${i})">?</span>`;
     tabsEl.appendChild(tab);
   });
 }
@@ -356,12 +417,13 @@ function openFile(i){
   if(!openTabs.includes(i)) openTabs.push(i);
   activeTab = i;
   renderAll();
+  closeSidebarOnMobile();
 }
 
 function renderEditor(){
   const editor = document.getElementById('editor');
   if(activeTab===-1){
-    editor.innerHTML = '<div class="empty-editor">Selecione um arquivo no Explorer para encontrar o bug de gram√°tica ‚üµ</div>';
+    editor.innerHTML = '<div class="empty-editor">Selecione um arquivo no Explorer para encontrar o bug de gram·tica ?</div>';
     document.getElementById('statusLang').textContent = 'Plain Text';
     return;
   }
@@ -373,7 +435,7 @@ function renderEditor(){
     line.forEach((s, segIdx)=>{
       if(s.c==='bug'){
         if(f.solved){
-          html += `<span class="fixed-word">${f.fixedText}</span><span class="fixed-check">‚úì</span>`;
+          html += `<span class="fixed-word">${f.fixedText}</span><span class="fixed-check">?</span>`;
         } else {
           html += `<span class="bug-word" data-line="${lineIdx}" data-seg="${segIdx}" onclick="openQuickFix(event,${lineIdx},${segIdx})">${s.t}</span>`;
         }
@@ -391,9 +453,9 @@ function renderProblemsPanel(){
   if(activeTab===-1){ panel.innerHTML=''; return; }
   const f = FILES[activeTab];
   if(f.solved){
-    panel.innerHTML = `<div class="ok-line">‚úì Nenhum problema encontrado em ${f.name}. Tempo verbal correto!</div>`;
+    panel.innerHTML = `<div class="ok-line">? Nenhum problema encontrado em ${f.name}. Tempo verbal correto!</div>`;
   } else {
-    panel.innerHTML = `<div class="prob-line">‚ö† 1 problema: poss√≠vel erro de tempo verbal em um coment√°rio de ${f.name}. Clique na palavra sublinhada em vermelho.</div>`;
+    panel.innerHTML = `<div class="prob-line">? 1 problema: possÌvel erro de tempo verbal em um coment·rio de ${f.name}. Toque na palavra sublinhada em vermelho.</div>`;
   }
 }
 
@@ -440,10 +502,24 @@ function openQuickFix(evt, lineIdx, segIdx){
     div.onclick = ()=>chooseOption(idx, div);
     optsEl.appendChild(div);
   });
+
   const rect = evt.target.getBoundingClientRect();
-  popup.style.left = Math.min(rect.left, window.innerWidth-280) + 'px';
-  popup.style.top = (rect.bottom + window.scrollY + 4) + 'px';
   popup.classList.remove('hidden');
+  const popupWidth = popup.offsetWidth;
+  const popupHeight = popup.offsetHeight;
+
+  let left = rect.left;
+  if(left + popupWidth > window.innerWidth - 8) left = window.innerWidth - popupWidth - 8;
+  if(left < 8) left = 8;
+
+  let top = rect.bottom + 6;
+  if(top + popupHeight > window.innerHeight - 8){
+    top = rect.top - popupHeight - 6;
+    if(top < 8) top = 8;
+  }
+
+  popup.style.left = left + 'px';
+  popup.style.top = top + 'px';
 }
 
 function chooseOption(idx, el){
@@ -455,8 +531,8 @@ function chooseOption(idx, el){
     f.fixedText = seg.options[idx];
     fixedCount++;
     document.getElementById('quickfix-popup').classList.add('hidden');
-    log(`Corrigido em ${f.name}: "${seg.options[idx]}" ‚úì ‚Äî ${seg.explain}`, 'log-ok');
-    showToast(`‚úì Corrigido! ${seg.explain}`);
+    log(`Corrigido em ${f.name}: "${seg.options[idx]}" ? ó ${seg.explain}`, 'log-ok');
+    showToast(`? Corrigido! ${seg.explain}`);
     renderAll();
     if(fixedCount === FILES.length){
       setTimeout(showSuccessOverlay, 900);
@@ -466,7 +542,7 @@ function chooseOption(idx, el){
     el.classList.add('wrong-flash');
     const bugSpan = document.querySelector(`.bug-word[data-line="${lineIdx}"][data-seg="${segIdx}"]`);
     if(bugSpan){ bugSpan.classList.add('shake'); setTimeout(()=>bugSpan.classList.remove('shake'),350); }
-    log(`Tentativa incorreta em ${f.name}. Ainda h√° um erro de tempo verbal na linha ${lineIdx+1}.`, 'log-err');
+    log(`Tentativa incorreta em ${f.name}. Ainda h· um erro de tempo verbal na linha ${lineIdx+1}.`, 'log-err');
     setTimeout(()=>el.classList.remove('wrong-flash'), 350);
   }
 }
@@ -504,7 +580,7 @@ function showSuccessOverlay(){
   else if(totalAttempts>9) gradeLetter='C';
   document.getElementById('finalGrade').textContent = gradeLetter;
   document.getElementById('finalDetails').textContent =
-    `${perfect} / ${FILES.length} bugs corrigidos na primeira tentativa ‚Äî ${totalAttempts} erro(s) no total.`;
+    `${perfect} / ${FILES.length} bugs corrigidos na primeira tentativa ó ${totalAttempts} erro(s) no total.`;
 
   const lines = [
     '$ npm run build',
@@ -541,7 +617,8 @@ function startConfetti(){
   canvas.width = window.innerWidth; canvas.height = window.innerHeight;
   const ctx = canvas.getContext('2d');
   const colors = ['#4ec9a0','#569cd6','#dcdcaa','#ce9178','#f14c4c','#c586c0'];
-  const pieces = Array.from({length:140}, ()=>({
+  const count = window.innerWidth < 500 ? 80 : 140;
+  const pieces = Array.from({length:count}, ()=>({
     x: Math.random()*canvas.width,
     y: -20 - Math.random()*canvas.height,
     size: 5+Math.random()*6,
@@ -568,6 +645,13 @@ function startConfetti(){
   }
   loop();
 }
+
+window.addEventListener('resize', ()=>{
+  const canvas = document.getElementById('confetti-canvas');
+  if(!document.getElementById('overlay').classList.contains('hidden')){
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  }
+});
 
 renderAll();
 openFile(0);
